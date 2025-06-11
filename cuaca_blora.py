@@ -1,50 +1,37 @@
 import requests
 import json
 
-# Kode wilayah Kedungtuban (dengan titik)
-ADM4_KEDUNGTUBAN = "33.16.04.2016"
-API_URL = f"https://api.bmkg.go.id/publik/prakiraan-cuaca?adm4={ADM4_KEDUNGTUBAN}"
+# Ganti kode wilayah sesuai kebutuhan
+kode_wilayah = "33.16.04.2016"
+url = f"https://api.bmkg.go.id/publik/prakiraan-cuaca?adm4={kode_wilayah}"
 
-def ambil_data():
-    resp = requests.get(API_URL, timeout=10)
-    resp.raise_for_status()
-    return resp.json()
+try:
+    response = requests.get(url, timeout=10)
+    data = response.json()
 
-def sederhanakan(data):
-    lokasi = data.get("lokasi", {})
-    prakiraan = data.get("data", [])
-    
-    hasil = {
-        "lokasi": {
-            "desa": lokasi.get("desa"),
-            "kecamatan": lokasi.get("kecamatan"),
-            "kotkab": lokasi.get("kotkab"),
-            "provinsi": lokasi.get("provinsi")
+    # Ambil data cuaca hari ini dan besok
+    cuaca_hari_ini = data["data"][0]["cuaca"][0][0]  # Hari ini, jam pertama
+    cuaca_besok    = data["data"][0]["cuaca"][1][0]  # Besok, jam pertama
+
+    data_ringkas = {
+        "lokasi": data["lokasi"]["kecamatan"],
+        "hari_ini": {
+            "cuaca": cuaca_hari_ini["weather_desc"],
+            "suhu": int(float(cuaca_hari_ini["t"])),
+            "kelembapan": int(float(cuaca_hari_ini["hu"]))
         },
-        "prakiraan": []
+        "besok": {
+            "cuaca": cuaca_besok["weather_desc"],
+            "suhu": int(float(cuaca_besok["t"])),
+            "kelembapan": int(float(cuaca_besok["hu"]))
+        }
     }
 
-    for hari_ke, blok in enumerate(prakiraan[:2]):  # Hari ini dan besok
-        for item in blok.get("cuaca", []):
-            hasil["prakiraan"].append({
-                "hari": hari_ke + 1,
-                "jam": item.get("local_datetime"),
-                "cuaca": item.get("weather_desc"),
-                "suhu": item.get("t"),
-                "kelembapan": item.get("hu")
-            })
+    # Simpan ke file JSON
+    with open("cuaca_ringkas.json", "w", encoding="utf-8") as f:
+        json.dump(data_ringkas, f, ensure_ascii=False, indent=2)
 
-    return hasil
+    print("Berhasil menyimpan cuaca_ringkas.json")
 
-def simpan_json(data, nama_file="cuaca_kedungtuban.json"):
-    with open(nama_file, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-    print(f"✅ Data disimpan di {nama_file}")
-
-if __name__ == "__main__":
-    try:
-        data = ambil_data()
-        ringkas = sederhanakan(data)
-        simpan_json(ringkas)
-    except Exception as e:
-        print("❌ Gagal:", e)
+except Exception as e:
+    print("Gagal mengambil atau memproses data:", e)
