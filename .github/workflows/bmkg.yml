@@ -1,0 +1,45 @@
+name: Update Cuaca Blora (BMKG)
+
+on:
+  schedule:
+    - cron: '0 */3 * * *'  # Tiap 3 jam
+  workflow_dispatch:
+
+jobs:
+  update-cuaca:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo ini
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependensi
+        run: pip install requests
+
+      - name: Jalankan script Python
+        run: python script_cuaca_blora.py  # ganti sesuai nama file kamu
+
+      - name: Clone repo GitHub Pages
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git clone https://x-access-token:${GH_TOKEN}@github.com/pradipta570/pradipta570.github.io.git pages
+
+      - name: Copy dan commit update cuaca_blora.json
+        run: |
+          cp cuaca_blora.json pages/
+          cd pages
+          git add cuaca_blora.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Update cuaca_blora.json otomatis"
+            git push
+          else
+            echo "Tidak ada perubahan."
+          fi
