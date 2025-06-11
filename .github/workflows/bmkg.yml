@@ -36,7 +36,7 @@ jobs:
         run: |
           cp cuaca_ringkas.json pages/
           cd pages
-          git add cuaca_blora.json
+          git add cuaca_ringkas.json
           if ! git diff --cached --quiet; then
             git commit -m "Update cuaca_blora.json otomatis"
             git push
