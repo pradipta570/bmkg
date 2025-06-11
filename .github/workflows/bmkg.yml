@@ -34,7 +34,7 @@ jobs:
 
       - name: Copy dan commit update cuaca_blora.json
         run: |
-          cp cuaca_blora.json pages/
+          cp cuaca_ringkas.json pages/
           cd pages
           git add cuaca_blora.json
           if ! git diff --cached --quiet; then
