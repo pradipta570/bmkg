@@ -22,7 +22,7 @@ jobs:
         run: pip install requests
 
       - name: Jalankan script Python
-        run: python script_cuaca_blora.py  # ganti sesuai nama file kamu
+        run: python cuaca_blora.py  # ganti sesuai nama file kamu
 
       - name: Clone repo GitHub Pages
         env:
