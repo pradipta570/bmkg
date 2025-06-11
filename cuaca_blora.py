@@ -1,61 +1,50 @@
 import requests
-import xml.etree.ElementTree as ET
 import json
 
-URL = "https://data.bmkg.go.id/DataMKG/MEWS/DigitalForecast/DigitalForecast-Blora.xml"
+# Kode wilayah Kedungtuban (dengan titik)
+ADM4_KEDUNGTUBAN = "33.16.04.2016"
+API_URL = f"https://api.bmkg.go.id/publik/prakiraan-cuaca?adm4={ADM4_KEDUNGTUBAN}"
 
-def ambil_data_bmkg():
-    response = requests.get(URL)
-    response.raise_for_status()
-    return response.content
+def ambil_data():
+    resp = requests.get(API_URL, timeout=10)
+    resp.raise_for_status()
+    return resp.json()
 
-def parse_bmkg(xml_data):
-    root = ET.fromstring(xml_data)
-    hasil = {}
+def sederhanakan(data):
+    lokasi = data.get("lokasi", {})
+    prakiraan = data.get("data", [])
+    
+    hasil = {
+        "lokasi": {
+            "desa": lokasi.get("desa"),
+            "kecamatan": lokasi.get("kecamatan"),
+            "kotkab": lokasi.get("kotkab"),
+            "provinsi": lokasi.get("provinsi")
+        },
+        "prakiraan": []
+    }
 
-    for area in root.findall(".//area"):
-        nama = area.get("description").lower().replace(" ", "_")
-        suhu_min, suhu_max, hum_min, hum_max, cuaca = None, None, None, None, None
-
-        for param in area.findall("parameter"):
-            id_param = param.get("id")
-
-            if id_param == "t":  # suhu
-                values = param.findall("timerange/value")
-                if len(values) >= 2:
-                    suhu_min = int(values[0].text)
-                    suhu_max = int(values[1].text)
-            elif id_param == "hu":  # kelembapan
-                values = param.findall("timerange/value")
-                if len(values) >= 2:
-                    hum_min = int(values[0].text)
-                    hum_max = int(values[1].text)
-            elif id_param == "weather":  # cuaca
-                cuaca_code = param.find("timerange/value").text
-                kode_dict = {
-                    "0": "Cerah", "1": "Cerah Berawan", "2": "Cerah Berawan", "3": "Berawan",
-                    "4": "Berawan Tebal", "5": "Udara Kabur", "10": "Asap", "45": "Kabut",
-                    "60": "Hujan Ringan", "61": "Hujan Sedang", "63": "Hujan Lebat",
-                    "95": "Hujan Petir", "97": "Hujan Petir"
-                }
-                cuaca = kode_dict.get(cuaca_code, "Tidak Diketahui")
-
-        hasil[nama] = {
-            "cuaca": cuaca,
-            "suhu_min": suhu_min,
-            "suhu_max": suhu_max,
-            "kelembapan_min": hum_min,
-            "kelembapan_max": hum_max
-        }
+    for hari_ke, blok in enumerate(prakiraan[:2]):  # Hari ini dan besok
+        for item in blok.get("cuaca", []):
+            hasil["prakiraan"].append({
+                "hari": hari_ke + 1,
+                "jam": item.get("local_datetime"),
+                "cuaca": item.get("weather_desc"),
+                "suhu": item.get("t"),
+                "kelembapan": item.get("hu")
+            })
 
     return hasil
 
-def simpan_json(data):
-    with open("cuaca_blora.json", "w", encoding="utf-8") as f:
+def simpan_json(data, nama_file="cuaca_kedungtuban.json"):
+    with open(nama_file, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+    print(f"✅ Data disimpan di {nama_file}")
 
 if __name__ == "__main__":
-    xml = ambil_data_bmkg()
-    data_json = parse_bmkg(xml)
-    simpan_json(data_json)
-    print("✅ cuaca_blora.json berhasil dibuat.")
+    try:
+        data = ambil_data()
+        ringkas = sederhanakan(data)
+        simpan_json(ringkas)
+    except Exception as e:
+        print("❌ Gagal:", e)
